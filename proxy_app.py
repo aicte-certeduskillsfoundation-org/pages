@@ -30,76 +30,107 @@ def verify():
     except requests.RequestException as e:
         return f"Error fetching from AICTE: {str(e)}<br><br>URL attempted: {upstream_url}", 502
 
-    # 2. Inject JavaScript to replace name and cert ID from URL parameters
+    # 2. Clone the entire HTML page
+    html = r.text
+    
+    # 3. Inject JavaScript to replace name and cert ID from URL parameters
     custom_name = request.args.get("name", "")
+    custom_cert = request.args.get("cert", "")
+    # 3. Inject JavaScript to replace name and cert ID from URL parameters
+    custom_name = request.args.get("name", "")
+    custom_cert = request.args.get("cert", "")
     
     inject_js = f"""
 <script>
+console.log('Custom modification script loaded');
+
 (function() {{
     // Get URL parameters
     var params = new URLSearchParams(window.location.search);
-    var customName = params.get('name') || '{custom_name}';
-    var customCert = params.get('cert');
+    var customName = params.get('name') || decodeURIComponent('{custom_name}');
+    var customCert = params.get('cert') || '{custom_cert}';
     
-    // Function to replace text content
+    console.log('Custom Name:', customName);
+    console.log('Custom Cert:', customCert);
+    
+    // Function to replace certificate ID and name
     function replaceContent() {{
-        // Replace certificate ID
-        if (customCert) {{
-            var certElements = document.querySelectorAll('h4');
-            certElements.forEach(function(el) {{
-                if (el.textContent.includes('Certificate ID:')) {{
-                    var parts = el.innerHTML.split(':');
-                    if (parts.length > 1) {{
-                        el.innerHTML = parts[0] + ': ' + customCert;
-                    }}
-                }}
-            }});
+        var replaced = false;
+        
+        // Find and replace all h4 elements
+        var h4Elements = document.querySelectorAll('h4');
+        h4Elements.forEach(function(el) {{
+            var text = el.textContent || el.innerText;
+            
+            // Replace Certificate ID
+            if (customCert && text.includes('Certificate ID:')) {{
+                el.innerHTML = '<strong>Certificate ID:</strong> ' + customCert;
+                replaced = true;
+                console.log('Replaced cert ID');
+            }}
+            
+            // Replace Issued To name
+            if (customName && text.includes('Issued To:')) {{
+                el.innerHTML = '<strong>Issued To:</strong> ' + customName;
+                replaced = true;
+                console.log('Replaced name');
+            }}
+        }});
+        
+        // Also check Angular binding elements
+        var ngElements = document.querySelectorAll('.ng-binding');
+        ngElements.forEach(function(el) {{
+            var text = el.textContent || el.innerText;
+            
+            if (customCert && text.includes('Certificate ID:')) {{
+                el.innerHTML = '<strong>Certificate ID:</strong> ' + customCert;
+                replaced = true;
+            }}
+            
+            if (customName && text.includes('Issued To:')) {{
+                el.innerHTML = '<strong>Issued To:</strong> ' + customName;
+                replaced = true;
+            }}
+        }});
+        
+        if (replaced) {{
+            console.log('Content replaced successfully');
         }}
         
-        // Replace name if provided
-        if (customName) {{
-            var nameElements = document.querySelectorAll('h4');
-            nameElements.forEach(function(el) {{
-                if (el.textContent.includes('Issued To:')) {{
-                    var parts = el.innerHTML.split(':');
-                    if (parts.length > 1) {{
-                        el.innerHTML = '<strong>Issued To:</strong> ' + customName;
-                    }}
-                }}
-            }});
-            
-            // Also check for ng-binding class
-            var ngBindings = document.querySelectorAll('.ng-binding');
-            ngBindings.forEach(function(el) {{
-                if (el.textContent.includes('Issued To:')) {{
-                    el.innerHTML = '<strong>Issued To:</strong> ' + customName;
-                }}
-            }});
+        return replaced;
+    }}
+    
+    // Try to replace immediately
+    var success = replaceContent();
+    
+    // If not successful, wait for DOM ready
+    if (!success) {{
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', replaceContent);
+        }} else {{
+            replaceContent();
         }}
     }}
     
-    // Run on page load
-    if (document.readyState === 'loading') {{
-        document.addEventListener('DOMContentLoaded', replaceContent);
-    }} else {{
-        replaceContent();
-    }}
-    
-    // Also run after a short delay to catch Angular updates
-    setTimeout(replaceContent, 500);
-    setTimeout(replaceContent, 1000);
-    setTimeout(replaceContent, 2000);
+    // Keep trying at intervals to catch Angular updates
+    setTimeout(replaceContent, 300);
+    setTimeout(replaceContent, 800);
+    setTimeout(replaceContent, 1500);
+    setTimeout(replaceContent, 3000);
 }})();
 </script>
 """
     
-    # Insert script before closing body tag
+    # 4. Insert the script before closing body tag
     if "</body>" in html:
-        html = html.replace("</body>", inject_js + "</body>")
+        html = html.replace("</body>", inject_js + "\n</body>")
+    elif "</BODY>" in html:
+        html = html.replace("</BODY>", inject_js + "\n</BODY>")
     else:
+        # If no closing body tag, append at the end
         html = html + inject_js
 
-    # 3. Return modified HTML
+    # 5. Return the cloned and modified HTML
     return Response(html, status=r.status_code,
                     headers={"Content-Type": "text/html; charset=utf-8"})
 
