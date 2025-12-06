@@ -116,7 +116,7 @@
     <div ng-show="certverified" style="color:whitesmoke" class="">
     <h3 class="login-box-msg"><img src="./AICTE Inernship Certification Management Portal_files/checked.gif" width="30%"><br>AICTE Internship Certificate is successfully verified</h3>
     <h4 class="ng-binding">Certificate ID: bddb5c7b067006561a618c7fcc017d03</h4>
-    <h4 class="ng-binding">Issued On: 19 Oct 2025</h4>
+    <h4 class="ng-binding">Issued On: 18 Apr 2025</h4>
     <h4 class="ng-binding">Issued To: CHINNAPAREDDY  VENKATA KARTHIK REDDY</h4>
     <h4 class="ng-binding">Institute: Vasireddy Venkatadri Institute of Technology</h4>
     <h4 class="ng-binding">Internship: ZSCALER ZERO TRUST CLOUD SECURITY VIRTUAL INTERNSHIP (JAN - MAR 2025)</h4>
@@ -200,81 +200,5 @@ app.controller('certController', function($scope, $http, $resource, DTOptionsBui
 <!-- Grunt Livereload -->
 <!-- <script src="//localhost:35729/livereload.js"></script> -->
 
-<!-- Custom Script to Replace Name and Cert ID from URL -->
-<script>
-(function() {
-    console.log('URL Parameter Replacement Script Loaded');
-    
-    // Get URL parameters
-    var params = new URLSearchParams(window.location.search);
-    var customCert = params.get('cert');
-    var customName = params.get('name');
-    
-    console.log('Cert from URL:', customCert);
-    console.log('Name from URL:', customName);
-    
-    // Function to replace certificate ID and name
-    function replaceContent() {
-        var replaced = false;
-        
-        // Find all h4 elements
-        var h4Elements = document.querySelectorAll('h4');
-        
-        h4Elements.forEach(function(el) {
-            var text = el.textContent || el.innerText;
-            
-            // Replace Certificate ID
-            if (customCert && text.includes('Certificate ID:')) {
-                el.innerHTML = '<strong>Certificate ID:</strong> ' + customCert;
-                replaced = true;
-                console.log('✓ Replaced Certificate ID');
-            }
-            
-            // Replace Issued To name
-            if (customName && text.includes('Issued To:')) {
-                el.innerHTML = '<strong>Issued To:</strong> ' + decodeURIComponent(customName);
-                replaced = true;
-                console.log('✓ Replaced Name');
-            }
-        });
-        
-        // Also check Angular ng-binding elements
-        var ngElements = document.querySelectorAll('.ng-binding');
-        ngElements.forEach(function(el) {
-            var text = el.textContent || el.innerText;
-            
-            if (customCert && text.includes('Certificate ID:')) {
-                el.innerHTML = '<strong>Certificate ID:</strong> ' + customCert;
-                replaced = true;
-            }
-            
-            if (customName && text.includes('Issued To:')) {
-                el.innerHTML = '<strong>Issued To:</strong> ' + decodeURIComponent(customName);
-                replaced = true;
-            }
-        });
-        
-        if (replaced) {
-            console.log('✓ Content successfully replaced');
-        } else {
-            console.log('⚠ No replacements made - waiting for content to load');
-        }
-    }
-    
-    // Run immediately
-    replaceContent();
-    
-    // Run after DOM is fully loaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', replaceContent);
-    }
-    
-    // Keep trying at intervals to catch Angular dynamic rendering
-    setTimeout(replaceContent, 300);
-    setTimeout(replaceContent, 800);
-    setTimeout(replaceContent, 1500);
-    setTimeout(replaceContent, 3000);
-})();
-</script>
 
 </div></body></html>
