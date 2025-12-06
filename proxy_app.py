@@ -30,57 +30,74 @@ def verify():
     except requests.RequestException as e:
         return f"Error fetching from AICTE: {str(e)}<br><br>URL attempted: {upstream_url}", 502
 
-    # 2. Rewrite HTML (example: replace name + optionally inject JS)
-    html = r.text
+    # 2. Inject JavaScript to replace name and cert ID from URL parameters
+    custom_name = request.args.get("name", "")
     
-    # Get custom name from URL parameter
-    custom_name = request.args.get("name")
-
-    # If custom name provided, replace it in the HTML
-    if custom_name:
-        # Try direct replacement of known name
-        html = html.replace(
-            "CHINNAPAREDDY  VENKATA KARTHIK REDDY",
-            custom_name
-        )
-        html = html.replace(
-            "CHINNAPAREDDY VENKATA KARTHIK REDDY",
-            custom_name
-        )
-
-    # Inject JavaScript to dynamically replace name from query parameter
-    inject_js = """
+    inject_js = f"""
 <script>
-(function () {
-  var params = new URLSearchParams(window.location.search);
-  var customName = params.get('name');
-  if (!customName) return;
-  
-  // Wait for page to load
-  window.addEventListener('DOMContentLoaded', function() {
-    var issuedNodes = document.querySelectorAll('h4.ng-binding');
-    issuedNodes.forEach(function (el) {
-      if (el.textContent.indexOf('Issued To:') === 0) {
-        el.textContent = 'Issued To: ' + customName;
-      }
-    });
+(function() {{
+    // Get URL parameters
+    var params = new URLSearchParams(window.location.search);
+    var customName = params.get('name') || '{custom_name}';
+    var customCert = params.get('cert');
     
-    // Also try to find and replace in other possible locations
-    var allH4 = document.querySelectorAll('h4');
-    allH4.forEach(function (el) {
-      var text = el.textContent || el.innerText;
-      if (text && text.indexOf('Issued To:') >= 0) {
-        var nameMatch = text.match(/Issued To:\s*(.+)/);
-        if (nameMatch) {
-          el.textContent = 'Issued To: ' + customName;
-        }
-      }
-    });
-  });
-})();
+    // Function to replace text content
+    function replaceContent() {{
+        // Replace certificate ID
+        if (customCert) {{
+            var certElements = document.querySelectorAll('h4');
+            certElements.forEach(function(el) {{
+                if (el.textContent.includes('Certificate ID:')) {{
+                    var parts = el.innerHTML.split(':');
+                    if (parts.length > 1) {{
+                        el.innerHTML = parts[0] + ': ' + customCert;
+                    }}
+                }}
+            }});
+        }}
+        
+        // Replace name if provided
+        if (customName) {{
+            var nameElements = document.querySelectorAll('h4');
+            nameElements.forEach(function(el) {{
+                if (el.textContent.includes('Issued To:')) {{
+                    var parts = el.innerHTML.split(':');
+                    if (parts.length > 1) {{
+                        el.innerHTML = '<strong>Issued To:</strong> ' + customName;
+                    }}
+                }}
+            }});
+            
+            // Also check for ng-binding class
+            var ngBindings = document.querySelectorAll('.ng-binding');
+            ngBindings.forEach(function(el) {{
+                if (el.textContent.includes('Issued To:')) {{
+                    el.innerHTML = '<strong>Issued To:</strong> ' + customName;
+                }}
+            }});
+        }}
+    }}
+    
+    // Run on page load
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', replaceContent);
+    }} else {{
+        replaceContent();
+    }}
+    
+    // Also run after a short delay to catch Angular updates
+    setTimeout(replaceContent, 500);
+    setTimeout(replaceContent, 1000);
+    setTimeout(replaceContent, 2000);
+}})();
 </script>
 """
-    html = html.replace("</body>", inject_js + "</body>")
+    
+    # Insert script before closing body tag
+    if "</body>" in html:
+        html = html.replace("</body>", inject_js + "</body>")
+    else:
+        html = html + inject_js
 
     # 3. Return modified HTML
     return Response(html, status=r.status_code,
