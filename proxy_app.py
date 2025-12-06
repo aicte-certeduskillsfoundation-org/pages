@@ -11,21 +11,42 @@ def verify():
     if not cert:
         return "Missing cert param", 400
 
-    # 1. Fetch original page from AICTE
+    # 1. Fetch original page from AICTE with proper headers
     upstream_url = f"{AICTE_BASE}?cert={cert}"
+    
+    # Add headers to mimic a real browser request
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+    }
+    
     try:
-        r = requests.get(upstream_url, timeout=10)
+        r = requests.get(upstream_url, headers=headers, timeout=15, allow_redirects=True)
+        r.raise_for_status()  # Raise error for bad status codes
     except requests.RequestException as e:
-        return f"Error fetching from AICTE: {str(e)}", 502
+        return f"Error fetching from AICTE: {str(e)}<br><br>URL attempted: {upstream_url}", 502
 
     # 2. Rewrite HTML (example: replace name + optionally inject JS)
     html = r.text
+    
+    # Get custom name from URL parameter
+    custom_name = request.args.get("name")
 
-    # Simple name replacement (demo only)
-    html = html.replace(
-        "CHINNAPAREDDY  VENKATA KARTHIK REDDY",
-        "CUSTOM NAME HERE"
-    )
+    # If custom name provided, replace it in the HTML
+    if custom_name:
+        # Try direct replacement of known name
+        html = html.replace(
+            "CHINNAPAREDDY  VENKATA KARTHIK REDDY",
+            custom_name
+        )
+        html = html.replace(
+            "CHINNAPAREDDY VENKATA KARTHIK REDDY",
+            custom_name
+        )
 
     # Inject JavaScript to dynamically replace name from query parameter
     inject_js = """
